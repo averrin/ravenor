@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strconv"
 	"time"
 
 	"gopkg.in/readline.v1"
@@ -32,10 +33,19 @@ func Read() string {
 
 func Test() {
 	for _, p := range "12345677654321" {
-		Send(fmt.Sprintf("T:%c\n", p))
-		// log.Println(Read())
+		led, _ := strconv.Atoi(string(p))
+		ToggleLED(led)
 		time.Sleep(200 * time.Millisecond)
 	}
+}
+
+func ToggleLED(led int) {
+	c := fmt.Sprintf("T:%d\n", led)
+	Send(c)
+}
+
+func ResetLEDs() {
+	Send(fmt.Sprintf("R:0\n"))
 }
 
 func Init() {
@@ -45,13 +55,25 @@ func Init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ExportPin(3)
 	SetMode(3, "out")
-	Send(fmt.Sprintf("R:0\n"))
+	ResetLEDs()
+}
+
+func Heartbeat() {
+	for {
+		time.Sleep(500 * time.Millisecond)
+		SetValue(2, 1)
+		time.Sleep(30 * time.Millisecond)
+		SetValue(2, 0)
+		time.Sleep(250 * time.Millisecond)
+		SetValue(2, 1)
+		time.Sleep(30 * time.Millisecond)
+		SetValue(2, 0)
+		time.Sleep(500 * time.Millisecond)
+	}
 }
 
 func main() {
-	ExportPin(2)
 	SetMode(2, "out")
 	SetValue(2, 1)
 	Init()
@@ -59,11 +81,16 @@ func main() {
 
 	interactive := flag.Bool("interactive", false, "readline mode")
 	flag.Parse()
+	log.Println("Ravenor started")
+
+	go Heartbeat()
 
 	if *interactive == true {
 		Shell()
 	} else {
-		Test()
+		for {
+			Test()
+		}
 	}
 }
 
@@ -88,21 +115,22 @@ func ExportPin(pin int) {
 	c := fmt.Sprintf("echo '%d' > /sys/class/gpio/export", pin)
 	// log.Println(c)
 	cmd := exec.Command("sh", "-c", c)
-	log.Println(cmd.Run())
+	cmd.Run()
 }
 
 func SetMode(pin int, mode string) {
+	ExportPin(pin)
 	c := fmt.Sprintf("echo '%s' > /sys/class/gpio/gpio%d/direction", mode, pin)
 	// log.Println(c)
 	cmd := exec.Command("sh", "-c", c)
-	log.Println(cmd.Run())
+	cmd.Run()
 }
 
 func SetValue(pin int, val int) {
 	c := fmt.Sprintf("echo '%d' > /sys/class/gpio/gpio%d/value", val, pin)
 	// log.Println(c)
 	cmd := exec.Command("sh", "-c", c)
-	log.Println(cmd.Run())
+	cmd.Run()
 }
 
 func Reset() {

@@ -2,5 +2,5 @@
 spawn ssh root@ravenor ./ravenor
 expect "password:"
 send "root\r"
-expect "$"
+expect eof
 exit 0
