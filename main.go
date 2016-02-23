@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os/exec"
 	"strconv"
 	"time"
@@ -31,12 +32,29 @@ func Read() string {
 	return fmt.Sprintf("%q", buf[:n])
 }
 
-func Test() {
+func TestLeds() {
 	for _, p := range "12345677654321" {
 		led, _ := strconv.Atoi(string(p))
 		ToggleLED(led)
+		log.Println(Read())
 		time.Sleep(200 * time.Millisecond)
 	}
+}
+
+func Test() {
+	for a := 0; a < 650; a += 5 {
+		SetServo(0, a)
+		time.Sleep(40 * time.Millisecond)
+	}
+	for a := 650; a > 0; a -= 5 {
+		SetServo(0, a)
+		time.Sleep(40 * time.Millisecond)
+	}
+}
+
+func SetServo(servo int, pos int) {
+	c := fmt.Sprintf("S:%d:%d\n", servo, pos)
+	Send(c)
 }
 
 func ToggleLED(led int) {
@@ -49,13 +67,13 @@ func ResetLEDs() {
 }
 
 func Init() {
-	c := &serial.Config{Name: "/dev/ttyS1", Baud: 57600}
+	// c := &serial.Config{Name: "/dev/ttyS1", Baud: 57600}
+	c := &serial.Config{Name: "/dev/ttyS1", Baud: 115200}
 	var err error
 	SERIAL, err = serial.OpenPort(c)
 	if err != nil {
 		log.Fatal(err)
 	}
-	SetMode(3, "out")
 	ResetLEDs()
 }
 
@@ -75,6 +93,7 @@ func Heartbeat() {
 
 func main() {
 	SetMode(2, "out")
+	SetMode(4, "out")
 	SetValue(2, 1)
 	Init()
 	SetValue(2, 0)
@@ -84,6 +103,16 @@ func main() {
 	log.Println("Ravenor started")
 
 	go Heartbeat()
+	go func() {
+		for {
+			SetValue(4, 0)
+			status := Ping()
+			if status {
+				SetValue(4, 1)
+			}
+			time.Sleep(15 * time.Second)
+		}
+	}()
 
 	if *interactive == true {
 		Shell()
@@ -134,7 +163,17 @@ func SetValue(pin int, val int) {
 }
 
 func Reset() {
-	SetValue(3, 1)
+	SetMode(3, "in")
 	time.Sleep(100 * time.Millisecond)
-	SetValue(3, 0)
+	SetMode(3, "out")
+}
+
+func Ping() bool {
+	url := "http://google.com"
+	resp, err := http.Get(url)
+	if err != nil || resp.StatusCode != 200 {
+		return false
+	}
+	defer resp.Body.Close()
+	return true
 }
