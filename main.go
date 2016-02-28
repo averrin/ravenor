@@ -17,6 +17,7 @@ import (
 var SERIAL *serial.Port
 
 func Send(msg string) {
+	// msg += "\n"
 	_, err := SERIAL.Write([]byte(msg))
 	if err != nil {
 		log.Fatal(err)
@@ -26,10 +27,18 @@ func Send(msg string) {
 func Read() string {
 	buf := make([]byte, 128)
 	n, err := SERIAL.Read(buf)
+	// a := fmt.Sprintf("%q", buf[len(buf)-1])
 	if err != nil {
 		log.Fatal(err)
 	}
-	return fmt.Sprintf("%q", buf[:n])
+	//  else {
+	// 	for a[len(a)-1] != "\n" {
+	// 		fmt.Println(a[len(a)-1])
+	// 		n, err = SERIAL.Read(buf)
+	// 	}
+	// }
+
+	return string(buf[:n])
 }
 
 func TestLeds() {
@@ -41,7 +50,7 @@ func TestLeds() {
 	}
 }
 
-func Test() {
+func TestServos() {
 	for a := 0; a < 650; a += 5 {
 		SetServo(0, a)
 		time.Sleep(40 * time.Millisecond)
@@ -50,6 +59,24 @@ func Test() {
 		SetServo(0, a)
 		time.Sleep(40 * time.Millisecond)
 	}
+}
+
+func TestColor() {
+	n := 0
+	for {
+		SetColorLed(n, 50, 200, 50)
+		n++
+		if n > 2 {
+			n = 0
+		}
+		SetColorLed(n, 255, 255, 255)
+		time.Sleep(80 * time.Millisecond)
+	}
+}
+
+func SetColorLed(led int, r int, g int, b int) {
+	c := fmt.Sprintf("C:%d:%d:%d:%d\n", led, r, g, b)
+	Send(c)
 }
 
 func SetServo(servo int, pos int) {
@@ -68,6 +95,7 @@ func ResetLEDs() {
 
 func Init() {
 	// c := &serial.Config{Name: "/dev/ttyS1", Baud: 57600}
+	log.Println("Start init")
 	c := &serial.Config{Name: "/dev/ttyS1", Baud: 115200}
 	var err error
 	SERIAL, err = serial.OpenPort(c)
@@ -75,6 +103,15 @@ func Init() {
 		log.Fatal(err)
 	}
 	ResetLEDs()
+	SetAllColor(50, 250, 30)
+	SetServo(0, 350)
+	// SERIAL.Flush()
+}
+
+func SetAllColor(r int, g int, b int) {
+	SetColorLed(0, r, g, b)
+	SetColorLed(1, r, g, b)
+	SetColorLed(2, r, g, b)
 }
 
 func Heartbeat() {
@@ -114,11 +151,20 @@ func main() {
 		}
 	}()
 
+	// Test := TestServos
+
+	// go func() {
+	// 	for {
+	// 		TestColor()
+	// 	}
+	// }()
+
 	if *interactive == true {
 		Shell()
 	} else {
 		for {
-			Test()
+			// Test()
+			time.Sleep(10 * time.Millisecond)
 		}
 	}
 }
@@ -137,6 +183,9 @@ func Shell() {
 			break
 		}
 		println(line)
+		// line = strings.Replace(" ", ":", line, -1)
+		Send(line + "\n")
+		log.Println(Read())
 	}
 }
 

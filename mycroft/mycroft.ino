@@ -42,6 +42,10 @@ void setup()
   pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
   strip.begin();
   strip.show();
+  strip.setPixelColor(0, strip.Color(240, 240, 20));
+  strip.setPixelColor(1, strip.Color(240, 240, 20));
+  strip.setPixelColor(2, strip.Color(240, 240, 20));
+  strip.show();
   
   Serial.begin(115200);
   Serial.println("reset");
